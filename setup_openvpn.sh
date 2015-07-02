@@ -1,11 +1,13 @@
 #!/bin/bash
 #
-# Installs and configures OpenVPN on an Ubuntu server,
+# Installs and configures OpenVPN for IPv4 on an Ubuntu server,
 # generates keys for the client and copies them
 # to the current directory on the local machine.
 #
 # This should only be run on a brand new server with
 # nothing else configured. Tested on Ubuntu 14.04 LTS.
+#
+# WARNING! This does not route IPv6 traffic.
 #
 # For an Ubuntu client:
 # apt-get install network-manager-openvpn-gnome
@@ -47,15 +49,21 @@ echo \$L 'configuring server'
 cp /usr/share/doc/openvpn/examples/sample-config-files/server.conf.gz /etc/openvpn/
 gzip -d /etc/openvpn/server.conf.gz
 sed -iE 's/dh1024/dh2048/' /etc/openvpn/server.conf
+echo 'user nobody' >> /etc/openvpn/server.conf
+echo 'group nogroup' >> /etc/openvpn/server.conf
 echo 'push \"redirect-gateway def1 bypass-dhcp\"' >> /etc/openvpn/server.conf
 echo 'push \"dhcp-option DNS 8.8.8.8\"' >> /etc/openvpn/server.conf
 
 echo \$L 'configuring network'
-sysctl -w net.ipv4.ip_forward=1
 echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-sed -i '\$ d' /etc/rc.local
-echo -e 'iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nexit 0' >> /etc/rc.local
+echo 'net.ipv4.conf.all.accept_redirects=0' >> /etc/sysctl.conf
+echo 'net.ipv4.conf.all.send_redirects=0' >> /etc/sysctl.conf
+sysctl -p
+
+sed -i '/^exit 0\$/ d' /etc/rc.local
+echo 'iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE' >> /etc/rc.local
+echo 'exit 0' >> /etc/rc.local
+/etc/rc.local
 
 echo \$L 'starting server'
 service openvpn start

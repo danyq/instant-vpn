@@ -8,6 +8,9 @@
 # For the client:
 # be sure to select "Use Point-to-Point encryption (MPPE)"
 # under advanced settings when configuring the VPN.
+#
+# WARNING! PPTP is insecure, and this configuration
+# does not route all traffic such as IPv6.
 
 set -o errexit
 
